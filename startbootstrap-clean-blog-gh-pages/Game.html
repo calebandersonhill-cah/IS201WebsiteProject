@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stickman Adventure</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            font-family: sans-serif;
+            overflow: hidden;
+        }
+        canvas {
+            background-color: #fff;
+            border: 2px solid #333;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .instructions {
+            position: absolute;
+            top: 20px;
+            text-align: center;
+        }
+        .NavBar {
+            position: fixed;
+            top: 5px;
+            left: 5px;
+        }
+    </style>
+</head>
+<body>
+<div class="NavBar">
+    <a href="index.html">Home</a>
+
+<div class="controls">
+    <div class="p1"><b>Player 1 (Blue):</b> Arrow Keys</div>
+    <div class="p2"><b>Player 2 (Red):</b> W, A, D Keys</div>
+</div>
+<canvas id="gameCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 800;
+    canvas.height = 400;
+
+    const gravity = 0.6;
+    let particles = [];
+
+    class Stickman {
+        constructor(x, color, controls, hasHair) {
+            this.startX = x;
+            this.x = x;
+            this.y = 300;
+            this.color = color;
+            this.controls = controls;
+            this.hasHair = hasHair;
+            this.dx = 0;
+            this.dy = 0;
+            this.width = 30;
+            this.height = 60;
+            this.grounded = false;
+        }
+
+        update(keys) {
+            // Movement
+            if (keys[this.controls.left]) this.dx = -5;
+            else if (keys[this.controls.right]) this.dx = 5;
+            else this.dx = 0;
+
+            // Jump
+            if (keys[this.controls.up] && this.grounded) {
+                this.dy = -13;
+                this.grounded = false;
+            }
+
+            this.dy += gravity;
+            this.x += this.dx;
+            this.y += this.dy;
+
+            // Collision with floor
+            if (this.y > canvas.height - 10) {
+                this.y = canvas.height - 10;
+                this.dy = 0;
+                this.grounded = true;
+            }
+
+            // Screen bounds
+            this.x = Math.max(15, Math.min(canvas.width - 15, this.x));
+        }
+
+        draw() {
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+
+            const headY = this.y - 50;
+            // Head
+            ctx.arc(this.x, headY, 10, 0, Math.PI * 2);
+            
+            // Long Hair (if female)
+            if (this.hasHair) {
+                ctx.moveTo(this.x - 8, headY);
+                ctx.quadraticCurveTo(this.x - 15, headY + 10, this.x - 12, headY + 25);
+                ctx.moveTo(this.x + 8, headY);
+                ctx.quadraticCurveTo(this.x + 15, headY + 10, this.x + 12, headY + 25);
+            }
+
+            // Body
+            ctx.moveTo(this.x, this.y - 40);
+            ctx.lineTo(this.x, this.y - 15);
+            // Arms
+            ctx.moveTo(this.x - 15, this.y - 35);
+            ctx.lineTo(this.x + 15, this.y - 35);
+            // Legs
+            ctx.moveTo(this.x, this.y - 15);
+            ctx.lineTo(this.x - 10, this.y);
+            ctx.moveTo(this.x, this.y - 15);
+            ctx.lineTo(this.x + 10, this.y);
+            ctx.stroke();
+        }
+
+        reset() {
+            this.x = this.startX;
+            this.y = 300;
+            this.dx = 0;
+            this.dy = 0;
+        }
+    }
+
+    const p1 = new Stickman(200, '#3498db', {up: 'ArrowUp', left: 'ArrowLeft', right: 'ArrowRight'}, false);
+    const p2 = new Stickman(600, '#e74c3c', {up: 'KeyW', left: 'KeyA', right: 'KeyD'}, true);
+
+    const keys = {};
+    window.onkeydown = (e) => keys[e.code] = true;
+    window.onkeyup = (e) => keys[e.code] = false;
+
+    function createExplosion(x, y) {
+        for (let i = 0; i < 30; i++) {
+            particles.push({
+                x, y,
+                dx: (Math.random() - 0.5) * 10,
+                dy: (Math.random() - 0.5) * 10,
+                radius: Math.random() * 5 + 2,
+                life: 30
+            });
+        }
+    }
+
+    function gameLoop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        p1.update(keys);
+        p2.update(keys);
+
+        // Check Collision
+        const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+        if (dist < 30) {
+            createExplosion((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
+            p1.reset();
+            p2.reset();
+        }
+
+        // Handle Particles
+        particles.forEach((p, i) => {
+            p.x += p.dx;
+            p.y += p.dy;
+            p.life--;
+            ctx.fillStyle = `rgba(255, 100, 0, ${p.life / 30})`;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.fill();
+            if (p.life <= 0) particles.splice(i, 1);
+        });
+
+        p1.draw();
+        p2.draw();
+
+        // Floor line
+        ctx.strokeStyle = '#eee';
+        ctx.beginPath(); ctx.moveTo(0, 395); ctx.lineTo(800, 395); ctx.stroke();
+
+        requestAnimationFrame(gameLoop);
+    }
+
+    gameLoop();
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+.NavBar {font-weight: 600;
+    background-color: rgb(147, 147, 147);
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    position:fixed
+
+}
+
+.Heading {background-color: rgb(191, 191, 191);
+font-family: Georgia, 'Times New Roman', Times, serif;
+h1 {color: rgb(255, 246, 165)}
+}
+
+.Books {background-color:rgb(255, 246, 165);
+}
+
+.Button{background-color: rgb(135, 101, 135);
+text-align:center}
